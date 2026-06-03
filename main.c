@@ -24,33 +24,41 @@
 
 int main(void)
 {
-	// Address to RCC clock control register (AHB1ENR): RCC Base + Address Offset for Clock Control
-	uint32_t *pClockRegister = (uint32_t*) 0x40023830;
+	uint32_t volatile *pClockRegister = (uint32_t*) 0x40023830;
 	// Address to GPIOD mode register
-	uint32_t *pGPIODModeRegister = (uint32_t*) 0x40020C00;
+	uint32_t volatile *pGPIODModeRegister = (uint32_t*) 0x40020C00;
 	// Address to GPIOD output data register
-	uint32_t *pGPIODOutDataRegister = (uint32_t*) 0x40020C14;
+	uint32_t volatile *pGPIODOutDataRegister = (uint32_t*) 0x40020C14;
 
-	// 1. Activate the clock for GPIOD peripheral (AHB1ENR register)
-	/* uint32_t temp = *pClockRegister; // read
-	temp |= 0x08; // modify
-	*pClockRegister = temp; // write */
+	// Address to GPIOA mode register
+	uint32_t volatile *pGPIOAModeRegister = (uint32_t*) 0x40020000;
+	// Address to GPIOA input register
+	uint32_t volatile *pGPIOAInpDataRegister = (uint32_t*) 0x40020010;
+
+	// Activate the clock for GPIOD & GPIOA Peripheral in AHB1ENR
 	*pClockRegister |= (1 << 3);
+	*pClockRegister |= (1 << 0);
 
-	// 2. Configuring the mode of the PD12 pin as Output --> 01 (clear 24th and 25th bit, then write)
-	/*
-	*pGPIODModeRegister &= ~(1 << 24); // clear
-	*pGPIODModeRegister &= ~(1 << 25); // clear
-	*/
-	// Instead of using 2 lines, we can combine in one:
+	// Configuring PD12 as Output (GPIOD mode register)
 	*pGPIODModeRegister &= ~(3 << 24);
-	*pGPIODModeRegister |= (1 << 24); // set
+	*pGPIODModeRegister |= (1 << 24);
 
-	// 3. Setting 12th bit of the output data register to make the output of PD12 HIGH
-	*pGPIODOutDataRegister |= (1 << 12);
+	// Configuring PA0 as Input (GPIOA mode register)
+	*pGPIOAModeRegister &= ~(3 << 0);
 
-	// INTRODUCING SMALL DELAY
+	while(1){
+		// Reading the 1st bit of the input data register. *pGPIOAInpDataRegister outputs 32 bits.
+		// Therefore, we perform bitwise AND to zero out all the other bits and output just the 1st bit
+		uint8_t pinStatus = (uint8_t) (*pGPIOAInpDataRegister & 0x1);
+		if (pinStatus) {
+			// Turn on the LED
+			// Setting 12th bit of the output data register to make the output of PD12 HIGH
+			*pGPIODOutDataRegister |= (1 << 12);
+		} else {
+			// Turn off the LED
+			*pGPIODOutDataRegister &= ~(1 << 12);
+		}
 
-    /* Loop forever */
-	for(;;);
+	}
+
 }
